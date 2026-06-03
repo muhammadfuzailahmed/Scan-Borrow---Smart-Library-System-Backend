@@ -1,20 +1,33 @@
 import dotenv from "dotenv"
 import express from "express"
 import { connectDB } from "./DB/db.js";
+import authRouter from "./routes/auth.route.js";
+import studentRouter from "./routes/student.route.js"
+import adminRouter from "./routes/admin.route.js"
+import bookRouter from "./routes/book.route.js"
+import cors from "cors"
 
 dotenv.config({
     path: "./.env"
 })
 
 const app = express();
-
+app.use(cors())
 app.use(express.json())
 
+app.use("/api/auth", authRouter)
+app.use("/api/student", studentRouter)
+app.use("/api/admin", adminRouter)
+app.use("/api/books", bookRouter)
 
 console.log("Hello world!, running on port:", process.env.PORT)
 
+app.get("/", (req, res) => {
+    res.send("Hello")
+})
+
 connectDB().then(() => {
-    app.listen(process.env.PORT, () => {
+    app.listen(process.env.PORT, "0.0.0.0", () => {
         console.log("listening on http://localhost:",process.env.PORT)
     })
 }).catch(() => {
