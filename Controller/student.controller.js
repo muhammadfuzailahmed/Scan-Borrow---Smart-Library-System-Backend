@@ -224,40 +224,106 @@ const getCurrentUserBorrowingHistory = async (req, res) => {
     message: "Borrowed books fetched successfully!",
     borrowedBooksHistory: getBooksQuery,
   });
-
 };
 
- const returnBook = async (req, res) => {
-    const { transactionCode, userId } = req.body;
+const formatDate = (date) => {
+  if (!date) return "No Borrowed Books";
 
-    const bookCopyIdResult =
-      await sql.query`select bookCopyId from transaction_records where transactionCode = ${transactionCode}`;
-    const bookCopyId = bookCopyIdResult.recordset[0].bookCopyId;
+  return new Date(date).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
 
-    await sql.query`update book_copies set isIssued = 0 where bookCopyId = ${bookCopyId}`;
+const returnBook = async (req, res) => {
+  const { transactionCode, userId } = req.body;
 
-    const date = new Date();
+  const bookCopyIdResult =
+    await sql.query`select bookCopyId from transaction_records where transactionCode = ${transactionCode}`;
+  const bookCopyId = bookCopyIdResult.recordset[0].bookCopyId;
 
-    const formattedDate = date.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+  await sql.query`update book_copies set isIssued = 0 where bookCopyId = ${bookCopyId}`;'ggdg'
 
-    await sql.query`update transaction_records set book_status = 'RETURNED' where bookCopyId = ${bookCopyId}`;
-    await sql.query`update transaction_records set returnDate = ${formattedDate} where bookCopyId = ${bookCopyId}`;
+  const date = new Date();
 
-    return res.status(200).json({
-      success: true,
-      message: "Book returned successfully!"
-    })
+  const formattedDate = date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
-  };
+  
+  const dueDateResult =
+  await sql.query`select dueDate from transaction_records where transactionCode = ${transactionCode}`;
+  const dueDate = dueDateResult.recordset[0].dueDate;
+  const returnDate = new Date();
+  
+  // remove time part so only date is compared
+  dueDate.setHours(0, 0, 0, 0);
+  returnDate.setHours(0, 0, 0, 0);
+  
+  const diffTime = returnDate - dueDate;
+  const lateDays = Math.max(Math.ceil(diffTime / (1000 * 60 * 60 * 24)), 0);
+  const finePerDay = 20;
+  let totalFine = 0;
+
+  if (lateDays !== 0) {
+    totalFine = finePerDay * lateDays;
+    console.log("Due date passed, fine: ", totalFine);
+  } else {
+    console.log("No fee charged");
+  }
+  
+  await sql.query`update transaction_records set book_status = 'RETURNED' where bookCopyId = ${bookCopyId}`;
+  await sql.query`update transaction_records set returnDate = ${formattedDate} where bookCopyId = ${bookCopyId}`;
+  await sql.query`update transaction_records set fineAmount = ${totalFine} where transactionCode = ${transactionCode}`;
+  const bookInfo = await sql.query`select transactionCode, issueDate, returnDate, dueDate, fineAmount from transaction_records where transactionCode = ${transactionCode}`
+
+  return res.status(200).json({
+    success: true,
+    message: "Book returned successfully!",
+    bookInfo: bookInfo.recordset[0]
+  });
+};
+
+const overDueBooksRecord = async (req, res) => {
+  const {userId} = req.params;
+  const currentFormattedDate = new Date();
+  
+  currentFormattedDate.setHours(0,0,0,0);
+
+  const dueBookDataResult = await sql.query`select bookCopyId, dueDate from transaction_records where userId = ${userId} and book_status = 'ISSUED'`
+  const bookDueDate = dueBookDataResult.recordset;
+  const booksName = []
+
+  for (const b of bookDueDate) {
+    if(currentFormattedDate > b.dueDate?.setHours(0,0,0,0)) {
+      let bookNameResult = await sql.query`select bookName from books where bookId = (select bookId from book_copies where bookCopyId = ${b.bookCopyId})`
+      let bookDataResult = await sql.query`select transactionCode, issueDate, dueDate, book_status AS status from transaction_records where bookCopyId = ${b.bookCopyId} and book_status = 'ISSUED'`
+      let bookCopyCodeResult = await sql.query`select copyCode from book_copies where bookCopyId = ${b.bookCopyId}`
+      let booksData = {
+        bookName: bookNameResult.recordset[0].bookName,
+        bookCopyCode: bookCopyCodeResult.recordset[0].copyCode,
+        bookData: bookDataResult.recordset[0]
+      }
+      booksName.push(booksData)
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Books with expired due date fetched successfully!",
+    books: booksName
+  })
+
+}
 
 export {
   getStudentDashboardData,
   borrowBook,
   getBorrowedBooksByCurrentUser,
   getCurrentUserBorrowingHistory,
-  returnBook
+  returnBook,
+  overDueBooksRecord
 };
