@@ -198,6 +198,8 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
   }
 
+  const activityLogsResult = await sql.query`select * from activity_logs`
+
 
   return res.status(200).json({
     success: true,
@@ -205,7 +207,8 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
     mostBorrowedBooks: mostBorrowedBooksResult.recordset.slice(0,3),
     defaultersList: defaulterData,
     fineReport: fineReports,
-    recentTransactions: latestTransactionRecords
+    recentTransactions: latestTransactionRecords,
+    activityLogs: activityLogsResult.recordset
   });
 };
 
