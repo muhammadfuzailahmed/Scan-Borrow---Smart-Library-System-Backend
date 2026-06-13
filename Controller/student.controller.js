@@ -138,6 +138,11 @@ const borrowBook = async (req, res) => {
   const updateIsIssued =
     await sql.query`update book_copies set isIssued = 1 where bookCopyId = ${bookCopyId}`;
 
+  const userLoginIdResult = await sql.query`select loginId from users where userId = ${userId}`
+  const userLoginId = userLoginIdResult.recordset[0];
+
+    await sql.query`insert into activity_logs (loginId, userId, actionType, description) values (${userLoginId.loginId}, ${userId}, 'BOOK ISSUE', 'Student issued/borrowed a book')`
+
   const borrowedBookData =
     await sql.query`select * from transaction_records where userId = ${userId} and bookCopyId = ${bookCopyId}`;
 
@@ -243,7 +248,12 @@ const returnBook = async (req, res) => {
     await sql.query`select bookCopyId from transaction_records where transactionCode = ${transactionCode}`;
   const bookCopyId = bookCopyIdResult.recordset[0].bookCopyId;
 
-  await sql.query`update book_copies set isIssued = 0 where bookCopyId = ${bookCopyId}`;'ggdg'
+  await sql.query`update book_copies set isIssued = 0 where bookCopyId = ${bookCopyId}`;
+
+  const userLoginIdResult = await sql.query`select loginId from users where userId = ${userId}`
+  const userLoginId = userLoginIdResult.recordset[0];
+
+    await sql.query`insert into activity_logs (loginId, userId, actionType, description) values (${userLoginId.loginId}, ${userId}, 'BOOK RETURN', 'Student returned a book')`
 
   const date = new Date();
 
@@ -270,7 +280,7 @@ const returnBook = async (req, res) => {
 
   if (lateDays !== 0) {
     totalFine = finePerDay * lateDays;
-    console.log("Due date passed, fine: ", totalFine);
+    await sql.query`insert into activity_logs (loginId, userId, actionType, description) values (${userLoginId.loginId}, ${userId}, 'FINE GENERATED', 'Fine generated on late return')`
   } else {
     console.log("No fee charged");
   }
