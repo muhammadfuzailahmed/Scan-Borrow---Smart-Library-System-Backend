@@ -1,85 +1,220 @@
 import sql from "../DB/db.js";
 
 const getAdminDashboardData = async (req, res) => {
-    const totalBooksResult = await sql.query`select count(*) AS totalBooksInLibrary from books`
+  const totalBooksResult =
+    await sql.query`select count(*) AS totalBooksInLibrary from books`;
 
-    const totalBooksCopiesResult = await sql.query`select count(*) AS totalBookCopiesInLibrary from book_copies`
+  const totalBooksCopiesResult =
+    await sql.query`select count(*) AS totalBookCopiesInLibrary from book_copies`;
 
-    const avalaibleBookCopies = await sql.query`select count(*) AS availableCopies from book_copies where isIssued = 0` 
+  const avalaibleBookCopies =
+    await sql.query`select count(*) AS availableCopies from book_copies where isIssued = 0`;
 
-    const issuedCopiesResult = await sql.query`select count(*) AS issuedCopies from transaction_records where book_status = 'ISSUED'`
+  const issuedCopiesResult =
+    await sql.query`select count(*) AS issuedCopies from transaction_records where book_status = 'ISSUED'`;
 
-    const totalTransactionsRessult = await sql.query`select count(*) totalTransactions from transaction_records`
+  const totalTransactionsRessult =
+    await sql.query`select count(*) totalTransactions from transaction_records`;
 
-    const activeBorrwersResult = await sql.query`select count(*) AS activeBorrowers from transaction_records where book_status = 'ISSUED'`
+  const activeBorrwersResult =
+    await sql.query`select count(*) AS activeBorrowers from transaction_records where book_status = 'ISSUED'`;
 
-    const userDataResult = await sql.query`select tr.transactionCode, tr.issueDate, tr.dueDate, tr.book_status, u.name, u.loginId, bc.copyCode, b.bookName from transaction_records tr JOIN users u ON tr.userId = u.userId JOIN book_copies bc ON bc.bookCopyID = tr.bookCopyId JOIN books b on b.bookId = bc.bookId`
+  const userDataResult =
+    await sql.query`select tr.transactionCode, tr.issueDate, tr.dueDate, tr.book_status, u.name, u.loginId, bc.copyCode, b.bookName from transaction_records tr JOIN users u ON tr.userId = u.userId JOIN book_copies bc ON bc.bookCopyID = tr.bookCopyId JOIN books b on b.bookId = bc.bookId`;
 
+  const overDueBooksResult =
+    await sql.query`SELECT COUNT(*) AS over_due_books FROM transaction_records WHERE returnDate IS NULL AND book_status = 'ISSUED' AND dueDate < CAST(GETDATE() AS DATE)`;
 
-    return res.status(200).json({
-      success: true,
-      message: "Admin dashboard data fetched successfully!",
-      stats: {
-        totalBooks: totalBooksResult.recordset[0].totalBooksInLibrary,
-        totalCopies: totalBooksCopiesResult.recordset[0].totalBookCopiesInLibrary,
-        availableCopies: avalaibleBookCopies.recordset[0].availableCopies,
-        issuedCopies: issuedCopiesResult.recordset[0]. issuedCopies,
-        totalTransactions: totalTransactionsRessult.recordset[0].totalTransactions,
-        activeBorrowers: activeBorrwersResult.recordset[0].activeBorrowers
-      },
-      recentTransactions: userDataResult.recordset
-    })
-}
+  const totalOverDueBooks = overDueBooksResult.recordset[0].over_due_books;
+
+  const totalFineResult =
+    await sql.query`select SUM(fineAmount) AS total_fine from transaction_records`;
+
+  return res.status(200).json({
+    success: true,
+    message: "Admin dashboard data fetched successfully!",
+    stats: {
+      totalBooks: totalBooksResult.recordset[0].totalBooksInLibrary,
+      totalCopies: totalBooksCopiesResult.recordset[0].totalBookCopiesInLibrary,
+      availableCopies: avalaibleBookCopies.recordset[0].availableCopies,
+      issuedCopies: issuedCopiesResult.recordset[0].issuedCopies,
+      totalTransactions:
+        totalTransactionsRessult.recordset[0].totalTransactions,
+      activeBorrowers: activeBorrwersResult.recordset[0].activeBorrowers,
+    },
+    recentTransactions: userDataResult.recordset,
+    totalOverDueBooks: totalOverDueBooks,
+    totalFine: totalFineResult.recordset[0].total_fine,
+  });
+};
 
 const getTransactionsPageData = async (req, res) => {
-  const transactionPageDataResult = await sql.query`select tr.transactionCode, tr.issueDate, tr.dueDate, tr.transactionId, tr.book_status, u.name, u.loginId, bc.copyCode, b.bookName from transaction_records tr JOIN users u ON tr.userId = u.userId JOIN book_copies bc ON bc.bookCopyID = tr.bookCopyId JOIN books b on b.bookId = bc.bookId`
+  const transactionPageDataResult =
+    await sql.query`select tr.transactionCode, tr.issueDate, tr.dueDate, tr.transactionId, tr.book_status, u.name, u.loginId, bc.copyCode, b.bookName from transaction_records tr JOIN users u ON tr.userId = u.userId JOIN book_copies bc ON bc.bookCopyID = tr.bookCopyId JOIN books b on b.bookId = bc.bookId`;
 
   res.status(200).json({
     success: true,
-      message: "Admin transactions page data fetched successfully!",
-      transactions: transactionPageDataResult.recordset
-  })
-
-}
+    message: "Admin transactions page data fetched successfully!",
+    transactions: transactionPageDataResult.recordset,
+  });
+};
 
 const getBookDetails = async (req, res) => {
-  const getBookDetailsQueryResult = await sql.query`select bookId, bookName, author, category, bookDescription from books`
+  const getBookDetailsQueryResult =
+    await sql.query`select bookId, bookName, author, category, bookDescription from books`;
 
   const books = [];
 
-  for(const book of getBookDetailsQueryResult.recordset) {
-    const totalCopiesResult = await sql.query`select count (*) AS totalCopies from book_copies where bookId = ${book.bookId}`
+  for (const book of getBookDetailsQueryResult.recordset) {
+    const totalCopiesResult =
+      await sql.query`select count (*) AS totalCopies from book_copies where bookId = ${book.bookId}`;
 
-    const availableCopiesResult = await sql.query`select count(*) AS availableCopies from book_copies where bookId = ${book.bookId} and isIssued = 0`
+    const availableCopiesResult =
+      await sql.query`select count(*) AS availableCopies from book_copies where bookId = ${book.bookId} and isIssued = 0`;
 
-    const issuedCopiesResult = await sql.query`select count(*) AS issuedCopies from book_copies where bookId = ${book.bookId} and isIssued = 1`
+    const issuedCopiesResult =
+      await sql.query`select count(*) AS issuedCopies from book_copies where bookId = ${book.bookId} and isIssued = 1`;
 
     books.push({
       ...book,
       totalCopies: totalCopiesResult.recordset[0].totalCopies,
       availableCopies: availableCopiesResult.recordset[0].availableCopies,
-      issuedCopies: issuedCopiesResult.recordset[0].issuedCopies
-    })
-
+      issuedCopies: issuedCopiesResult.recordset[0].issuedCopies,
+    });
   }
-
 
   return res.status(200).json({
     success: true,
     message: "Book details fetched successfully!",
-    books: books
-  })
-}
+    books: books,
+  });
+};
 
 const bookCopiesDetails = async (req, res) => {
-  const bookCopyDetailsQueryResult = await sql.query`select bc.bookCopyId, bc.copyCode, bc.QRcode, bc.isIssued, b.bookName from book_copies bc JOIN books b ON bc.bookId = b.bookId`
+  const bookCopyDetailsQueryResult =
+    await sql.query`select bc.bookCopyId, bc.copyCode, bc.QRcode, bc.isIssued, b.bookName from book_copies bc JOIN books b ON bc.bookId = b.bookId`;
 
   return res.status(200).json({
     success: true,
     message: "Book copies data fetched successfully!",
-    bookCopies: bookCopyDetailsQueryResult.recordset
-  })
+    bookCopies: bookCopyDetailsQueryResult.recordset,
+  });
+};
 
-}
+const getAdminRecordsPageData = async (req, res) => {
+  const mostBorrowedBooksResult = await sql.query`select b.bookName, b.author, COUNT(tr.transactionId) AS borrowCount FROM transaction_records tr JOIN book_copies bc ON tr.bookCopyId = bc.bookCopyId JOIN books b ON bc.bookId = b.bookId GROUP BY b.bookId, b.bookName, b.author ORDER BY borrowCount DESC`;
 
-export {getAdminDashboardData, getTransactionsPageData, getBookDetails, bookCopiesDetails}
+  let defaulterData = [];
+  const defaultersListDueDateResult =
+    await sql.query`SELECT dueDate, userId, bookCopyId, DATEDIFF(DAY, dueDate, CAST(GETDATE() AS DATE)) AS daysLate FROM transaction_records WHERE returnDate IS NULL AND book_status = 'ISSUED' AND dueDate < CAST(GETDATE() AS DATE)`;
+
+  if (defaultersListDueDateResult.recordset.length === 0) {
+    defaulterData = 0;
+  }
+
+  const defaultersListDueDate = defaultersListDueDateResult.recordset;
+ const currentDate = new Date();
+currentDate.setHours(0, 0, 0, 0);
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+  for (const d of defaultersListDueDate) {
+    const formattedDueDate = new Date(d.dueDate);
+    const daysLate = Math.floor((currentDate - formattedDueDate) / MS_PER_DAY);
+    if (currentDate > formattedDueDate) {
+      const defaultersListNameResult =
+        await sql.query`select name from users where userId = ${d.userId}`;
+      const defaultersListLoginIdResult =
+        await sql.query`select loginId from users where userId = ${d.userId}`;
+      const defaultersListCopyCodeResult =
+        await sql.query`select copyCode from book_copies where bookCopyId = ${d.bookCopyId}`;
+      const defaultersListBookNameResult =
+        await sql.query`select bookName from books where bookId = (select bookId from book_copies where bookCopyId = ${d.bookCopyId})`;
+
+      defaulterData.push({
+        name: defaultersListNameResult.recordset[0].name,
+        loginId: defaultersListLoginIdResult.recordset[0].loginId,
+        bookName: defaultersListBookNameResult.recordset[0].bookName,
+        copyCode: defaultersListCopyCodeResult.recordset[0].copyCode,
+        dueDate: d.dueDate,
+        daysLate: d.daysLate,
+        fineAmount: d.daysLate * 20,
+      });
+    } else {
+      console.log("Not overdue");
+    }
+  }
+
+  let fineReports = [];
+
+  const fineReportsDueDateAndFineResult =
+    await sql.query`select returnDate, fineAmount, bookCopyId, userId from transaction_records where returnDate is not Null and book_status = 'RETURNED' and fineAmount != 0`;
+
+  const fineReportsDueDateAndFine = fineReportsDueDateAndFineResult.recordset;
+
+  for (const fine of fineReportsDueDateAndFine) {
+    const fineReportsBookNameResult =
+      await sql.query`select bookName from books where bookId = (select bookId from book_copies where bookCopyId = ${fine.bookCopyId})`;
+    const fineReportsStudentNameResult =
+      await sql.query`select name from users where userId = ${fine.userId}`;
+    const fineReportsStudentLoginIdResult =
+      await sql.query`select loginId from users where userId = ${fine.userId}`;
+
+    fineReports.push({
+      name: fineReportsStudentNameResult.recordset[0].name,
+      loginId: fineReportsStudentLoginIdResult.recordset[0].loginId,
+      bookName: fineReportsBookNameResult.recordset[0].bookName,
+      returnDate: fine.returnDate,
+      fineAmount: fine.fineAmount,
+    });
+  }
+
+  const latestTransactionRecords = [];
+
+  const latestTransactionRecordsDataResult = await sql.query`select * from transaction_records order by transactionId DESC`
+
+  const latestTransactionRecordsData = latestTransactionRecordsDataResult.recordset.slice(0,3);
+
+  for (const t of latestTransactionRecordsData) {
+    const transactionRecordsBookNameResult =
+      await sql.query`select bookName from books where bookId = (select bookId from book_copies where bookCopyId = ${t.bookCopyId})`;
+    const transactionRecordsCopyCodeResult = await sql.query`select copyCode from book_copies where bookCopyId = ${t.bookCopyId}`
+    const transactionRecordsStudentNameResult =
+      await sql.query`select name from users where userId = ${t.userId}`;
+    const transactionRecordsStudentLoginIdResult =
+      await sql.query`select loginId from users where userId = ${t.userId}`;
+
+    latestTransactionRecords.push(
+      {
+        transactionCode: t.transactionCode,
+        studentName: transactionRecordsStudentNameResult.recordset[0].name,
+        loginId: transactionRecordsStudentLoginIdResult.recordset[0].loginId,
+        bookName: transactionRecordsBookNameResult.recordset[0].bookName,
+        copyCode: transactionRecordsCopyCodeResult.recordset[0].copyCode,
+        issueDate: t.issueDate,
+        returnDate: t.returnDate,
+        status: t.book_status
+      }
+    )
+
+  }
+
+
+
+
+  return res.status(200).json({
+    success: true,
+    message: "Records oage data fetched successfully!",
+    mostBorrowedBooks: mostBorrowedBooksResult.recordset.slice(0,3),
+    defaultersList: defaulterData,
+    fineReport: fineReports,
+    recentTransactions: latestTransactionRecords
+  });
+};
+
+export {
+  getAdminDashboardData,
+  getTransactionsPageData,
+  getBookDetails,
+  bookCopiesDetails,
+  getAdminRecordsPageData,
+};
