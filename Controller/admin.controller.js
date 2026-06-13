@@ -42,7 +42,7 @@ const getAdminDashboardData = async (req, res) => {
         totalTransactionsRessult.recordset[0].totalTransactions,
       activeBorrowers: activeBorrwersResult.recordset[0].activeBorrowers,
     },
-    recentTransactions: userDataResult.recordset,
+    recentTransactions: userDataResult.recordset.slice(0,10),
     totalOverDueBooks: totalOverDueBooks,
     totalFine: totalFineResult.recordset[0].total_fine,
   });
@@ -50,7 +50,7 @@ const getAdminDashboardData = async (req, res) => {
 
 const getTransactionsPageData = async (req, res) => {
   const transactionPageDataResult =
-    await sql.query`select tr.transactionCode, tr.issueDate, tr.dueDate, tr.transactionId, tr.book_status, u.name, u.loginId, bc.copyCode, b.bookName from transaction_records tr JOIN users u ON tr.userId = u.userId JOIN book_copies bc ON bc.bookCopyID = tr.bookCopyId JOIN books b on b.bookId = bc.bookId`;
+    await sql.query`select tr.transactionCode, tr.issueDate, tr.dueDate, tr.transactionId, tr.book_status, tr.fineAmount, u.name, u.loginId, bc.copyCode, b.bookName from transaction_records tr JOIN users u ON tr.userId = u.userId JOIN book_copies bc ON bc.bookCopyID = tr.bookCopyId JOIN books b on b.bookId = bc.bookId`;
 
   res.status(200).json({
     success: true,
@@ -197,8 +197,6 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
     )
 
   }
-
-
 
 
   return res.status(200).json({
