@@ -1,10 +1,11 @@
 import sql from "../DB/db.js";
+import bcrypt from "bcryptjs"
 
 const loginUser = async (req, res) => {
   const { loginId, password } = req.body;
 
   const result =
-    await sql.query`select * from users where loginId = ${loginId} and password = ${password}`;
+    await sql.query`select * from users where loginId = ${loginId}`;
 
   if (result.recordset.length === 0) {
     await sql.query`insert into activity_logs (loginId, userId, actionType, description) values (${loginId}, NULL, 'LOGIN FAILED', 'Invalid login attempt')`
@@ -15,6 +16,15 @@ const loginUser = async (req, res) => {
   }
 
   const user = result.recordset[0];
+
+  const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+  if(!isPasswordCorrect) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid credentials"
+    })
+  }
 
   if (user.isActive === false) {
     return res.status(401).json({
