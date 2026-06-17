@@ -1,7 +1,7 @@
 import sql from "../DB/db.js";
 
 const getStudentDashboardData = async (req, res) => {
-  const { userId } = req.params;
+  const userId = req.user.userId;
 
   //borrowed books
 
@@ -189,7 +189,7 @@ const borrowBook = async (req, res) => {
 };
 
 const getBorrowedBooksByCurrentUser = async (req, res) => {
-  const { userId } = req.params;
+  const userId = req.user?.userId;
 
   const getBooksQueryResult =
     await sql.query`select b.bookName, bc.copyCode, tr.transactionCode, tr.issueDate, tr.dueDate, tr.book_status AS status from transaction_records tr JOIN book_copies bc ON tr.bookCopyId = bc.bookCopyId JOIN books b ON bc.bookId = b.bookId where tr.book_status = 'ISSUED' and tr.userId = ${userId}`;
@@ -211,7 +211,7 @@ const getBorrowedBooksByCurrentUser = async (req, res) => {
 };
 
 const getCurrentUserBorrowingHistory = async (req, res) => {
-  const { userId } = req.params;
+  const userId = req.user?.userId;
 
   const getBooksQueryResult =
     await sql.query`select b.bookName, bc.copyCode, tr.transactionCode, tr.issueDate, tr.dueDate, tr.book_status AS status from transaction_records tr JOIN book_copies bc ON tr.bookCopyId = bc.bookCopyId JOIN books b ON bc.bookId = b.bookId where tr.userId = ${userId}`;
@@ -300,7 +300,7 @@ const returnBook = async (req, res) => {
 };
 
 const overDueBooksRecord = async (req, res) => {
-  const { userId } = req.params;
+  const userId = req.user?.userId;
   const currentFormattedDate = new Date();
 
   currentFormattedDate.setHours(0, 0, 0, 0);
@@ -335,7 +335,7 @@ const overDueBooksRecord = async (req, res) => {
 };
 
 const suggestBookToUser = async (req, res) => {
-  const { userId } = req.params;
+  const userId = req.user?.userId;
 
   const userDepartmentAndSemester =
     await sql.query`select department, semester from users where userId = ${userId}`;

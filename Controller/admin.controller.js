@@ -29,7 +29,7 @@ const getAdminDashboardData = async (req, res) => {
 
   const totalFineResult =
     await sql.query`select SUM(fineAmount) AS total_fine from transaction_records`;
-
+  
   return res.status(200).json({
     success: true,
     message: "Admin dashboard data fetched successfully!",
