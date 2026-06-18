@@ -293,6 +293,26 @@ const deleteBook = async (req, res) => {
   });
 };
 
+const deleteBookCopy = async (req, res) => {
+  const {bookCopyId} = req.body;
+
+  const bookCopyIsIssuedResult = await sql.query`select isIssued from book_copies where bookCopyId = ${bookCopyId}`
+
+  if(bookCopyIsIssuedResult.recordset[0].isIssued === 1) {
+    return res.status(409).json({
+      success: false,
+      message: "Book copy is already issued"
+    })
+  }
+
+  await sql.query`delete from book_copies where bookCopyId = ${bookCopyId}`
+
+  return res.status(200).json({
+    success: true,
+    message: "Book deleted successfully!"
+  })
+}
+
 export {
   getAdminDashboardData,
   getTransactionsPageData,
@@ -303,4 +323,5 @@ export {
   addBookCopy,
   updateBookInfo,
   deleteBook,
+  deleteBookCopy
 };
