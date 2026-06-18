@@ -44,7 +44,8 @@ const getStudentDashboardData = async (req, res) => {
 };
 
 const borrowBook = async (req, res) => {
-  const { userId, QRcode } = req.body;
+  const { QRcode } = req.body;
+  const userId = req.user?.userId;
 
   const numberOfBorrowedBooksResult =
     await sql.query`select count(*) AS totalBorrowedBooks from transaction_records where userId = ${userId} and book_status = 'ISSUED'`;
@@ -243,7 +244,8 @@ const formatDate = (date) => {
 };
 
 const returnBook = async (req, res) => {
-  const { transactionCode, userId } = req.body;
+  const { transactionCode } = req.body;
+  const userId = req.user?.userId;
 
   const bookCopyIdResult =
     await sql.query`select bookCopyId from transaction_records where transactionCode = ${transactionCode}`;
