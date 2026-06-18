@@ -29,7 +29,7 @@ const getAdminDashboardData = async (req, res) => {
 
   const totalFineResult =
     await sql.query`select SUM(fineAmount) AS total_fine from transaction_records`;
-  
+
   return res.status(200).json({
     success: true,
     message: "Admin dashboard data fetched successfully!",
@@ -42,7 +42,7 @@ const getAdminDashboardData = async (req, res) => {
         totalTransactionsRessult.recordset[0].totalTransactions,
       activeBorrowers: activeBorrwersResult.recordset[0].activeBorrowers,
     },
-    recentTransactions: userDataResult.recordset.slice(0,10),
+    recentTransactions: userDataResult.recordset.slice(0, 10),
     totalOverDueBooks: totalOverDueBooks,
     totalFine: totalFineResult.recordset[0].total_fine,
   });
@@ -102,7 +102,8 @@ const bookCopiesDetails = async (req, res) => {
 };
 
 const getAdminRecordsPageData = async (req, res) => {
-  const mostBorrowedBooksResult = await sql.query`select b.bookName, b.author, COUNT(tr.transactionId) AS borrowCount FROM transaction_records tr JOIN book_copies bc ON tr.bookCopyId = bc.bookCopyId JOIN books b ON bc.bookId = b.bookId GROUP BY b.bookId, b.bookName, b.author ORDER BY borrowCount DESC`;
+  const mostBorrowedBooksResult =
+    await sql.query`select b.bookName, b.author, COUNT(tr.transactionId) AS borrowCount FROM transaction_records tr JOIN book_copies bc ON tr.bookCopyId = bc.bookCopyId JOIN books b ON bc.bookId = b.bookId GROUP BY b.bookId, b.bookName, b.author ORDER BY borrowCount DESC`;
 
   let defaulterData = [];
   const defaultersListDueDateResult =
@@ -113,9 +114,9 @@ const getAdminRecordsPageData = async (req, res) => {
   }
 
   const defaultersListDueDate = defaultersListDueDateResult.recordset;
- const currentDate = new Date();
-currentDate.setHours(0, 0, 0, 0);
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  const currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0);
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
   for (const d of defaultersListDueDate) {
     const formattedDueDate = new Date(d.dueDate);
@@ -170,45 +171,125 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
   const latestTransactionRecords = [];
 
-  const latestTransactionRecordsDataResult = await sql.query`select * from transaction_records order by transactionId DESC`
+  const latestTransactionRecordsDataResult =
+    await sql.query`select * from transaction_records order by transactionId DESC`;
 
-  const latestTransactionRecordsData = latestTransactionRecordsDataResult.recordset.slice(0,3);
+  const latestTransactionRecordsData =
+    latestTransactionRecordsDataResult.recordset.slice(0, 3);
 
   for (const t of latestTransactionRecordsData) {
     const transactionRecordsBookNameResult =
       await sql.query`select bookName from books where bookId = (select bookId from book_copies where bookCopyId = ${t.bookCopyId})`;
-    const transactionRecordsCopyCodeResult = await sql.query`select copyCode from book_copies where bookCopyId = ${t.bookCopyId}`
+    const transactionRecordsCopyCodeResult =
+      await sql.query`select copyCode from book_copies where bookCopyId = ${t.bookCopyId}`;
     const transactionRecordsStudentNameResult =
       await sql.query`select name from users where userId = ${t.userId}`;
     const transactionRecordsStudentLoginIdResult =
       await sql.query`select loginId from users where userId = ${t.userId}`;
 
-    latestTransactionRecords.push(
-      {
-        transactionCode: t.transactionCode,
-        studentName: transactionRecordsStudentNameResult.recordset[0].name,
-        loginId: transactionRecordsStudentLoginIdResult.recordset[0].loginId,
-        bookName: transactionRecordsBookNameResult.recordset[0].bookName,
-        copyCode: transactionRecordsCopyCodeResult.recordset[0].copyCode,
-        issueDate: t.issueDate,
-        returnDate: t.returnDate,
-        status: t.book_status
-      }
-    )
-
+    latestTransactionRecords.push({
+      transactionCode: t.transactionCode,
+      studentName: transactionRecordsStudentNameResult.recordset[0].name,
+      loginId: transactionRecordsStudentLoginIdResult.recordset[0].loginId,
+      bookName: transactionRecordsBookNameResult.recordset[0].bookName,
+      copyCode: transactionRecordsCopyCodeResult.recordset[0].copyCode,
+      issueDate: t.issueDate,
+      returnDate: t.returnDate,
+      status: t.book_status,
+    });
   }
 
-  const activityLogsResult = await sql.query`select * from activity_logs`
-
+  const activityLogsResult = await sql.query`select * from activity_logs`;
 
   return res.status(200).json({
     success: true,
     message: "Records oage data fetched successfully!",
-    mostBorrowedBooks: mostBorrowedBooksResult.recordset.slice(0,3),
+    mostBorrowedBooks: mostBorrowedBooksResult.recordset.slice(0, 3),
     defaultersList: defaulterData,
     fineReport: fineReports,
     recentTransactions: latestTransactionRecords,
-    activityLogs: activityLogsResult.recordset
+    activityLogs: activityLogsResult.recordset,
+  });
+};
+
+const addBook = async (req, res) => {
+  const { bookData } = req.body;
+
+  await sql.query`insert into books (bookName, category, author, bookDescription) values (${bookData.bookName}, ${bookData.category}, ${bookData.author}, ${bookData.bookDescription})`;
+
+  return res.status(200).json({
+    success: true,
+    message: "Book added successfuly!",
+  });
+};
+
+const addBookCopy = async (req, res) => {
+  const { bookId, copyCode, QRcode } = req.body;
+
+  const oldBookCopiesResult =
+    await sql.query`select copyCode, QRcode from book_copies where bookId = ${bookId}`;
+
+  const oldBookCopies = oldBookCopiesResult.recordset;
+
+  for (const b of oldBookCopies) {
+    if (b.copyCode == copyCode) {
+      return res.status(409).json({
+        success: false,
+        message: "Copy code already exists against same book",
+      });
+      break;
+    }
+  }
+
+  for (const b of oldBookCopies) {
+    if (b.QRcode == QRcode) {
+      return res.status(409).json({
+        success: false,
+        message: "QRcode already exists against same book",
+      });
+      break;
+    }
+  }
+
+  await sql.query`insert into book_copies (bookId, copyCode, QRcode) values (${bookId}, ${copyCode}, ${QRcode})`;
+
+  return res.status(200).json({
+    success: true,
+    message: "Book copy added successfully",
+  });
+};
+
+const updateBookInfo = async (req, res) => {
+  const { bookId, bookName, author, category, bookDescription } = req.body;
+
+  await sql.query`update books set bookName = ${bookName}, author = ${author}, category = ${category}, bookDescription = ${bookDescription} where bookId = ${bookId}`;
+
+  return res.status(200).json({
+    success: true,
+
+    message: "Book info updated successfully!",
+  });
+};
+
+const deleteBook = async (req, res) => {
+  const { bookId } = req.body;
+
+  const issuedCopiesResult =
+    await sql.query`SELECT COUNT(*) AS issuedCount FROM book_copies WHERE bookId = ${bookId} AND isIssued = 1`;
+
+  if (issuedCopiesResult.recordset[0].issuedCount > 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Cannot delete book because some copies are currently issued",
+    });
+  }
+
+  await sql.query`delete from book_copies where bookId = ${bookId}`;
+  await sql.query`delete from books where bookId = ${bookId}`;
+
+  return res.status(200).json({
+    success: true,
+    message: "bbok deleted successfully!",
   });
 };
 
@@ -218,4 +299,8 @@ export {
   getBookDetails,
   bookCopiesDetails,
   getAdminRecordsPageData,
+  addBook,
+  addBookCopy,
+  updateBookInfo,
+  deleteBook,
 };
