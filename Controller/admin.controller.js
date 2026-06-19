@@ -50,7 +50,7 @@ const getAdminDashboardData = async (req, res) => {
 
 const getTransactionsPageData = async (req, res) => {
   const transactionPageDataResult =
-    await sql.query`select tr.transactionCode, tr.issueDate, tr.dueDate, tr.transactionId, tr.book_status, tr.fineAmount, u.name, u.loginId, bc.copyCode, b.bookName from transaction_records tr JOIN users u ON tr.userId = u.userId JOIN book_copies bc ON bc.bookCopyID = tr.bookCopyId JOIN books b on b.bookId = bc.bookId`;
+    await sql.query`select tr.transactionCode, tr.issueDate, tr.dueDate, tr.transactionId, tr.book_status, tr.fineAmount, u.name, u.loginId, bc.copyCode, b.bookName from transaction_records tr JOIN users u ON tr.userId = u.userId JOIN book_copies bc ON bc.bookCopyID = tr.bookCopyId JOIN books b on b.bookId = bc.bookId order by tr.transactionId desc`;
 
   res.status(200).json({
     success: true,
@@ -199,7 +199,7 @@ const getAdminRecordsPageData = async (req, res) => {
     });
   }
 
-  const activityLogsResult = await sql.query`select * from activity_logs`;
+  const activityLogsResult = await sql.query`select * from activity_logs order by logId desc`;
 
   return res.status(200).json({
     success: true,

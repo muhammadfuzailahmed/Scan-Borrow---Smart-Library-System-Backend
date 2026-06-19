@@ -215,7 +215,7 @@ const getCurrentUserBorrowingHistory = async (req, res) => {
   const userId = req.user?.userId;
 
   const getBooksQueryResult =
-    await sql.query`select b.bookName, bc.copyCode, tr.transactionCode, tr.issueDate, tr.dueDate, tr.book_status AS status from transaction_records tr JOIN book_copies bc ON tr.bookCopyId = bc.bookCopyId JOIN books b ON bc.bookId = b.bookId where tr.userId = ${userId}`;
+    await sql.query`select b.bookName, bc.copyCode, tr.transactionCode, tr.issueDate, tr.dueDate, tr.book_status AS status from transaction_records tr JOIN book_copies bc ON tr.bookCopyId = bc.bookCopyId JOIN books b ON bc.bookId = b.bookId where tr.userId = ${userId} order by tr.transactionId desc`;
 
   if (getBooksQueryResult.recordset.length === 0) {
     return res.status(201).json({
